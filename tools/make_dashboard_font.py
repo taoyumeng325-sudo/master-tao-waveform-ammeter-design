@@ -5,7 +5,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
 ASCII = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZkm~Ω./ ()+-*"
-CHINESE = "电流监测数显指针曲线组合量程压功率字示模拟趋势波形仪表万用交流直二极管阻档参考测试"
+CHINESE = "电流监测数显指针曲线组合量程压功率字示模拟趋势波形仪表万用交流直二极管阻档参考测试首页独立历史屏幕演四"
 
 
 def make_font(font_file, face, size, chars):
@@ -40,7 +40,7 @@ def main():
             ("axis", 14, ASCII + "电压流功率"),
             ("label", 19, ASCII + CHINESE),
             ("title", 28, ASCII + CHINESE),
-            ("meter", 36, ASCII + "万用表"),
+            ("meter", 36, ASCII + "万用表仪首页"),
             ("large", 80, "0123456789.VAWOL- "),
             ("dmm_value", 108, "0123456789.VOL-MkΩ "),
             ("dmm_history", 23, "0123456789.VOL-MkΩ "),

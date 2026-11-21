@@ -335,8 +335,12 @@ static void dial(canvas_t *c, box_t b, reading_t reading, int range)
         const float angle = PI * (1.f - fraction(reading.current, ranges[range]));
         const int end_x = x + (int)(cosf(angle) * (rx - 14));
         const int end_y = y - (int)(sinf(angle) * (ry - 14));
-        line(c, x, y, end_x, end_y, 5, RED);
-        line(c, x, y - 1, end_x, end_y - 1, 1, RGB565(255,187,163));
+        const int tail_dx = (int)(sinf(angle) * 9);
+        const int tail_dy = (int)(cosf(angle) * 9);
+        for (int j = -4; j <= 4; ++j) {
+            line(c, x + j * tail_dx / 4, y + j * tail_dy / 4, end_x, end_y, 2,
+                 j >= 2 ? RGB565(255,134,113) : RED);
+        }
     }
     panel(c, (box_t){x-13,y-13,26,26}, 13, INK, RGB565(191,208,221), RGB565(66,89,109));
     char value[24];
@@ -442,40 +446,27 @@ void ui_render(const ui_state_t *s, uint16_t *pixels, int top, int rows)
 void ui_render_cover(uint16_t *pixels, int top, int rows)
 {
     canvas_t c = {.pixels = pixels, .top = top, .bottom = top + rows};
-    rectangle(&c, (box_t){0,0,UI_WIDTH,UI_HEIGHT}, 0);
-    header(&c, -1, (reading_t){.demo = true});
-    static const char *const titles[] = {"数字显示", "指针显示", "曲线显示", "指针+曲线"};
-    static const char *const captions[] = {"电压 / 电流 / 功率", "模拟指针仪表", "趋势波形曲线", "指针/曲线组合"};
-    for (int i = 0; i < 4; ++i) {
-        const int x = 22 + i % 2 * 410;
-        const int y = 78 + i / 2 * 191;
-        const box_t area = {x,y,397,176};
-        if (visible(&c, area)) {
-            panel(&c, area, 18, i == 0 ? GREEN : CYAN, PANEL, RGB565(1,6,9));
-            text(&c, &title_font, x + 99, y + 72, 1, INK, titles[i]);
-            text(&c, &label_font, x + 99, y + 111, 1, CYAN, captions[i]);
-            line(&c, x + 196, y + 23, x + 196, y + 153, 1, GRID);
-            if (i == 1 || i == 3) {
-                dial(&c, (box_t){x+201,y+11,180,154},
-                     (reading_t){.current=3.f,.valid=true,.demo=true}, 4);
-            } else if (i == 2) {
-                for (int k = 0; k < 3; ++k) {
-                    const int mid = y + 55 + k * 32;
-                    for (int q = 1; q <= 145; ++q) {
-                        const int x0 = x+220+q-1, x1 = x+220+q;
-                        const int y0 = mid + (int)(6*sinf((q-1)/8.f));
-                        const int y1 = mid + (int)(6*sinf(q/8.f));
-                        line(&c,x0,y0,x1,y1,2,reading_colors[k]);
-                    }
-                }
-            } else {
-                text(&c,&meter_font,x+359,y+44,2,GREEN,"12.00 V");
-                text(&c,&meter_font,x+359,y+89,2,RED,"3.00 A");
-                text(&c,&meter_font,x+359,y+134,2,BLUE,"36.00 W");
-            }
-        }
-    }
-    rectangle(&c, (box_t){22,462,807,2}, CYAN);
+    rectangle(&c, (box_t){0,0,UI_WIDTH,UI_HEIGHT}, RGB565(2,9,14));
+    pulse(&c, 24, 39);
+    text(&c, &meter_font, 78, 37, 0, INK, "仪表首页");
+    panel(&c, (box_t){651,19,177,37}, 10, GRID, PANEL, 0);
+    text(&c, &label_font, 740, 38, 1, CYAN, "GD-A-004  DEMO");
+    rectangle(&c, (box_t){24,73,805,2}, CYAN);
+
+    panel(&c, (box_t){24,95,395,335}, 20, CYAN, RGB565(6,33,47), RGB565(1,11,19));
+    panel(&c, (box_t){435,95,394,335}, 20, GREEN, RGB565(8,36,26), RGB565(1,13,11));
+    text(&c, &title_font, 48, 128, 0, INK, "电源监测");
+    text(&c, &title_font, 459, 128, 0, INK, "数字万用表");
+    text(&c, &label_font, 48, 159, 0, CYAN, "电压 / 电流 / 功率");
+    text(&c, &label_font, 459, 159, 0, GREEN, "AC / DC / 二极管 / 电阻");
+    dial(&c, (box_t){45,183,350,183}, (reading_t){.current=3.f,.valid=true,.demo=true}, 4);
+    panel(&c, (box_t){459,195,346,154}, 12, GRID, RGB565(3,21,16), 0);
+    text(&c, &axis_font, 478, 217, 0, GREEN, "DC");
+    text(&c, &large_font, 632, 272, 1, RGB565(176,255,36), "12.6 V");
+    text(&c, &label_font, 632, 327, 1, INK, "直流电压");
+    text(&c, &label_font, 221, 401, 1, INK, "数显 / 指针 / 曲线 / 组合");
+    text(&c, &label_font, 632, 401, 1, INK, "四档独立历史");
+    text(&c, &label_font, 426, 455, 1, CYAN, "屏幕演示");
 }
 
 void ui_label_reference(uint16_t *pixels, int top, int rows)
@@ -589,6 +580,10 @@ void dmm_render(const dmm_history_t *history, dmm_mode_t mode, uint16_t *pixels,
             dmm_reading_t reading = filled ? history->readings[(oldest + i) % DMM_HISTORY] :
                                             (dmm_reading_t){0};
             dmm_value_text(value, sizeof(value), mode, reading);
+            if (latest_cell) {
+                rounded(&c, (box_t){box.x-2,box.y-2,box.w+4,box.h+4}, 11,
+                        RGB565(49,84,24), RGB565(8,33,12));
+            }
             panel(&c, box, 9, latest_cell ? DMM_LIME : CYAN,
                   latest_cell ? RGB565(7,41,16) : PANEL, 0);
             text(&c, &axis_font, box.x + 8, box.y + 12, 0, INK, slot);
